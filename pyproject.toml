@@ -5,5 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "clang-format>=21.1.5",
+    "clang-tidy>=21.1.1",
     "cmake>=4.1.2",
+    "pre-commit>=4.4.0",
 ]

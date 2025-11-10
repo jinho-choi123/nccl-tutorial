@@ -22,9 +22,10 @@ find_package(CUDAToolkit REQUIRED)
 
 #### Add source files ####
 set(CSRC_DIR csrc)
+file(GLOB_RECURSE CSRC_FILES ${CSRC_DIR}/*.cpp)
 set(INCLUDE_DIR include)
-add_executable(main ${CSRC_DIR}/main.cpp)
+
+
+add_executable(main ${CSRC_FILES})
 target_include_directories(main PRIVATE ${INCLUDE_DIR})
-
 target_link_libraries(main PRIVATE CUDA::cudart NCCL::NCCL)
-
