@@ -30,10 +30,11 @@ int main() {
 
     // manage 2 devices
     int nDev = GPU_COUNT;
-    int buffer_size = 32 * 1024 * 1024;
+    int buffer_size = 32;
 
-    // Define the ranks for each device
-    int dev_rank[nDev];
+    // Define the ranks for each device 
+    int dev_rank[GPU_COUNT];
+
     for (int i = 0; i < nDev; i++) {
         dev_rank[i] = i;
     }
@@ -45,23 +46,32 @@ int main() {
     // Define cuda stream pointer storage
     cudaStream_t * streams = (cudaStream_t*) malloc(sizeof(cudaStream_t) * nDev);
 
+    // Malloc host_buffer for initialization
+    float* host_buffer1 = (float*)malloc(buffer_size * sizeof(float));
+    for (int i = 0; i < buffer_size; i++) {
+        host_buffer1[i] = 4.0f;
+    }
+
     // Initialize CUDA devices
     for (int i = 0; i < nDev; i++) {
         CUDACHECK(cudaSetDevice(dev_rank[i]));
 
         // Allocate memory for the send and receive buffers
-        CUDACHECK(cudaMalloc(send_buffers + i, buffer_size * sizeof(float)));
-        CUDACHECK(cudaMalloc(recv_buffers + i, buffer_size * sizeof(float)));
+        CUDACHECK(cudaMalloc(&send_buffers[i], buffer_size * sizeof(float)));
+        CUDACHECK(cudaMalloc(&recv_buffers[i], buffer_size * sizeof(float)));
 
         // Initialize the send and receive buffers
-        // Send buffer is initialized to 1
+        // Send buffer is initialized to 4.0f
         // Receive buffer is initialized to 0
-        CUDACHECK(cudaMemset(send_buffers[i], 1, buffer_size * sizeof(float)));
+        CUDACHECK(cudaMemcpy(send_buffers[i], host_buffer1, buffer_size * sizeof(float), cudaMemcpyHostToDevice));
         CUDACHECK(cudaMemset(recv_buffers[i], 0, buffer_size * sizeof(float)));
 
         // Create a cuda stream
-        CUDACHECK(cudaStreamCreate(streams + i));
+        CUDACHECK(cudaStreamCreate(&streams[i]));
     }
+
+    // Free host_buffer
+    free(host_buffer1);
 
     // Initialize NCCL communicators
     NCCLCHECK(ncclCommInitAll(comms, nDev, dev_rank));
@@ -85,17 +95,23 @@ int main() {
     }
 
     // print the results
+    float* host_buffer2 = (float*)malloc(buffer_size * sizeof(float));
     for (int i = 0; i < nDev; i++) {
         CUDACHECK(cudaSetDevice(dev_rank[i]));
-        CUDACHECK(cudaMemcpy(recv_buffers[i], send_buffers[i], buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+        CUDACHECK(cudaMemcpy(host_buffer2, recv_buffers[i], buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
         printf("Device %d: ", dev_rank[i]);
+        // print the results
         for (int j = 0; j < buffer_size; j++) {
-            printf("%f ", recv_buffers[i][j]);
+            printf("%f ", host_buffer2[j]);
         }
+
+        printf("\n\n\n");
     }
+
+    // free the host buffer
+    free(host_buffer2);
+    
     printf("\n");
-
-
 
     // #### End of Main Content of the program ####
     
