@@ -20,12 +20,16 @@ find_package(NCCL REQUIRED)
 # Find CUDA Toolkit
 find_package(CUDAToolkit REQUIRED)
 
-#### Add source files ####
-set(CSRC_DIR csrc)
-file(GLOB_RECURSE CSRC_FILES ${CSRC_DIR}/*.cpp)
-set(INCLUDE_DIR include)
+# Find MPI
+find_package(MPI REQUIRED)
+if(MPI_FOUND)
+    message(STATUS "MPI C++ compiler: ${MPI_CXX_COMPILER}")
+    message(STATUS "MPI C++ include path: ${MPI_CXX_INCLUDE_PATH}")
+    message(STATUS "MPI C++ libraries: ${MPI_CXX_LIBRARIES}")
+else()
+    message(FATAL_ERROR "MPI not found!")
+endif()
 
-
-add_executable(main ${CSRC_FILES})
-target_include_directories(main PRIVATE ${INCLUDE_DIR})
-target_link_libraries(main PRIVATE CUDA::cudart NCCL::NCCL)
+# Add subdirectories
+add_subdirectory(st_md)
+add_subdirectory(mt_md)
