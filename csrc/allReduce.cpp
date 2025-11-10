@@ -102,5 +102,11 @@ void allReduce() {
     NCCLCHECK(ncclCommDestroy(comms[i]));
   }
 
+  // free the cuda streams
+  for (int i = 0; i < nDev; i++) {
+    CUDACHECK(cudaSetDevice(device_ids[i]));
+    CUDACHECK(cudaStreamDestroy(streams[i]));
+  }
+
   printf("NCCL-AllReduce communication completed successfully\n");
 }
