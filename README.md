@@ -1,14 +1,9 @@
 ## NCCL Tutorial
 
 ### Prerequisites
-- Use runpod.io with A5000 x 2 or A5000 x 4 GPUs
+- Environment with 2 NVIDIA GPUs
 - CUDA Toolkit(>=11.8)
 - NCCL(>=2.18.3)
-
-### Install OpenMPI
-```bash
-sudo apt install openmpi-bin libopenmpi-dev -y
-```
 
 ### Setup
 ```bash
