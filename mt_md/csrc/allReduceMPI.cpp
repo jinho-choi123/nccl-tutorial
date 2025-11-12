@@ -1,28 +1,46 @@
 #include "allReduceMPI.hpp"
+#include <nccl.h>
 
-void allReduceMPI(int argc, char **argv) { 
-    
-    printf("Starting MPI-AllReduce communication...\n"); 
+void allReduceMPI(ncclComm_t comm, cudaStream_t &stream, float *send_buffer, float *recv_buffer, int buffer_size,
+                  int world_size, int world_rank) {
 
-  // Initialize MPI environment
-  MPI_Init(&argc, &argv);
+  printf("Starting MPI-AllReduce communication...\n");
+  printf("World size: %d, World rank: %d\n", world_size, world_rank);
 
-  // Get the number of processes
-  int world_size;
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+  // Malloc host_buffer for initialization
+  float *host_buffer1 = (float *)malloc(buffer_size * sizeof(float));
+  for (int i = 0; i < buffer_size; i++) {
+    host_buffer1[i] = 4.0f;
+  }
+  printf("Each device will send a buffer of size %d with value 4.0f\n", buffer_size);
 
-  // Get the rank of the process
-  int world_rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+  // Initialize the send and receive buffers
+  for (int i = 0; i < buffer_size; i++) {
+    CUDACHECK(cudaMemcpy(&send_buffer[i], &host_buffer1[i], sizeof(float), cudaMemcpyHostToDevice));
+    CUDACHECK(cudaMemset(&recv_buffer[i], 0, sizeof(float)));
+  }
 
-  // Get the name of the process
-  char processor_name[MPI_MAX_PROCESSOR_NAME];
-  int name_len;
-  MPI_Get_processor_name(processor_name, &name_len);
+  // Free host_buffer
+  free(host_buffer1);
 
-  // Print the rank and the name of the process
-  printf("Hello from process %d of %d on %s\n", world_rank, world_size, processor_name);
+  // Call ncclAllReduce
+  NCCLCHECK(ncclAllReduce(send_buffer, recv_buffer, buffer_size, ncclFloat, ncclSum, comm, stream));
 
-  // Finalize MPI environment
-  MPI_Finalize();
+  // Synchronize the stream
+  CUDACHECK(cudaStreamSynchronize(stream));
+
+  // Print the results
+  float *host_buffer2 = (float *)malloc(buffer_size * sizeof(float));
+  for (int i = 0; i < buffer_size; i++) {
+    CUDACHECK(cudaMemcpy(&host_buffer2[i], &recv_buffer[i], sizeof(float), cudaMemcpyDeviceToHost));
+  }
+  printf("All-reduce results: \n");
+  for (int i = 0; i < buffer_size; i++) {
+    printf("%f ", host_buffer2[i]);
+  }
+  printf("\n");
+
+  // Free host_buffer
+  free(host_buffer2);
+  printf("MPI-AllReduce communication completed successfully\n");
 }

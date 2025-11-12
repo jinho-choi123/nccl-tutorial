@@ -2,11 +2,13 @@
 #define UTILS_HPP
 
 #include <cuda_runtime.h>
+#include <mpi.h>
 #include <nccl.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #define GPU_COUNT 2
+#define BUFFER_SIZE 32
 
 // MACROS FOR CUDA CHECKS
 #define CUDACHECK(cmd)                                                                                                 \

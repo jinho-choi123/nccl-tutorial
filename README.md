@@ -21,3 +21,26 @@ uv sync
 Scenario 1: single thread - multiple devices (st_md)
 
 Scenario 2: multiple thread - multiple device (mt_md, each thread has its own device)
+
+### Run st_md
+```bash
+mkdir build
+cd build
+cmake ..
+make
+./st_md/st_md_main
+```
+
+### Run mt_md
+```bash
+mkdir build
+cd build
+cmake ..
+make
+
+# For 2 GPUs
+mpirun -n 2 ./mt_md/mt_md_main
+
+# For n_gpus GPUs
+mpirun -n <n_gpus> ./mt_md/mt_md_main
+```
