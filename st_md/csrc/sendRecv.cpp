@@ -1,79 +1,37 @@
 #include "sendRecv.hpp"
 
-void sendRecv() {
+void sendRecv(ncclComm_t *comms, cudaStream_t *streams, float **send_buffers, float **recv_buffers, int nDev,
+              int *device_ids) {
   printf("Starting NCCL-SendRecv communication...\n");
-  printf("GPU_COUNT: %d\n", GPU_COUNT);
-
-  // Define the communicators for each GPU
-  ncclComm_t comms[GPU_COUNT];
-
-  // manage 2 devices
-  int nDev = GPU_COUNT;
-  int device_ids[GPU_COUNT] = {0, 1};
-  int buffer_size = 32;
-
-  // Define the device to send to and receive from
-  int send_device = 0;
-  int recv_device = 1;
-
-  // Define buffer pointer storage
-  float **send_buffers = (float **)malloc(nDev * sizeof(float *));
-  float **recv_buffers = (float **)malloc(nDev * sizeof(float *));
-
-  // Define cuda stream pointer storage
-  cudaStream_t *streams = (cudaStream_t *)malloc(nDev * sizeof(cudaStream_t));
+  printf("GPU_COUNT: %d\n", nDev);
 
   // Malloc host_buffer for initialization
-  float *host_buffer1 = (float *)malloc(buffer_size * sizeof(float));
-  for (int i = 0; i < buffer_size; i++) {
+  float *host_buffer1 = (float *)malloc(BUFFER_SIZE * sizeof(float));
+  for (int i = 0; i < BUFFER_SIZE; i++) {
     host_buffer1[i] = 4.0f;
   }
-  printf("device 0 will send a buffer of size %d with value 4.0f to device 1\n", buffer_size);
+  printf("Each device will send a buffer of size %d with value 4.0f\n", BUFFER_SIZE);
 
-  // Initialize CUDA devices
+  // Initialize the send and receive buffers
   for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-
-    // Allocate memory for the send and receive buffers
-    CUDACHECK(cudaMalloc(&send_buffers[i], buffer_size * sizeof(float)));
-    CUDACHECK(cudaMalloc(&recv_buffers[i], buffer_size * sizeof(float)));
-
-    // Initialize the send and receive buffers
-    // Send buffer is initialized to 4.0f
-    // Receive buffer is initialized to 0
-    CUDACHECK(cudaMemcpy(send_buffers[i], host_buffer1, buffer_size * sizeof(float), cudaMemcpyHostToDevice));
-    CUDACHECK(cudaMemset(recv_buffers[i], 0, buffer_size * sizeof(float)));
-
-    // Create a cuda stream
-    CUDACHECK(cudaStreamCreate(&streams[i]));
+    CUDACHECK(cudaMemcpy(send_buffers[i], host_buffer1, BUFFER_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+    CUDACHECK(cudaMemset(recv_buffers[i], 0, BUFFER_SIZE * sizeof(float)));
   }
 
-  // Free host_buffer
+  // Free the host buffer
   free(host_buffer1);
-
-  // Initialize NCCL communicators
-  NCCLCHECK(ncclCommInitAll(comms, nDev, device_ids));
-
-  // #### Main Content of the program ####
 
   // Start a NCCL group
   // This is used to group all the NCCL operations that need to be done together
   // Used when multiple devices are involved in a single thread execution
   NCCLCHECK(ncclGroupStart());
 
-  // Insert send and recv operations for each device's cuda stream
+  // Insert sendRecv operations for each device's cuda stream
   for (int i = 0; i < nDev; i++) {
-    if (i == send_device) {
-      // Send the buffer to device 1
-      NCCLCHECK(ncclSend(send_buffers[i], buffer_size, ncclFloat, 1, comms[i], streams[i]));
-    } else if (i == recv_device) {
-      // Receive the buffer from device 0
-      NCCLCHECK(ncclRecv(recv_buffers[i], buffer_size, ncclFloat, 0, comms[i], streams[i]));
-    } else {
-      // Do nothing
-      continue;
-    }
+    NCCLCHECK(ncclSend(send_buffers[i], BUFFER_SIZE, ncclFloat, 1, comms[i], streams[i]));
+    NCCLCHECK(ncclRecv(recv_buffers[i], BUFFER_SIZE, ncclFloat, 0, comms[i], streams[i]));
   }
+
   NCCLCHECK(ncclGroupEnd());
 
   // synchronize all the streams
@@ -83,41 +41,16 @@ void sendRecv() {
   }
 
   // print the results
-  float *host_buffer2 = (float *)malloc(buffer_size * sizeof(float));
+  float *host_buffer2 = (float *)malloc(BUFFER_SIZE * sizeof(float));
+  for (int i = 0; i < nDev; i++) {
+    CUDACHECK(cudaMemcpy(host_buffer2, recv_buffers[i], BUFFER_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
+  }
   printf("SendRecv results: \n");
-  CUDACHECK(cudaSetDevice(device_ids[recv_device]));
-  CUDACHECK(cudaMemcpy(host_buffer2, recv_buffers[recv_device], buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
-  printf("Device %d: ", device_ids[recv_device]);
-  // print the results
-  for (int j = 0; j < buffer_size; j++) {
-    printf("%f ", host_buffer2[j]);
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    printf("%f ", host_buffer2[i]);
   }
-  printf("\n\n\n");
-
-  // free the host buffer
-  free(host_buffer2);
-
   printf("\n");
-
-  // #### End of Main Content of the program ####
-
-  // free device buffers
-  for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-    CUDACHECK(cudaFree(send_buffers[i]));
-    CUDACHECK(cudaFree(recv_buffers[i]));
-  }
-
-  // finalize NCCL communicators
-  for (int i = 0; i < nDev; i++) {
-    NCCLCHECK(ncclCommDestroy(comms[i]));
-  }
-
-  // free the cuda streams
-  for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-    CUDACHECK(cudaStreamDestroy(streams[i]));
-  }
+  free(host_buffer2);
 
   printf("NCCL-SendRecv communication completed successfully\n");
 }

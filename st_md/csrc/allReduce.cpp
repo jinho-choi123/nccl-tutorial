@@ -1,63 +1,34 @@
 #include "allReduce.hpp"
 
-void allReduce() {
+void allReduce(ncclComm_t *comms, cudaStream_t *streams, float **send_buffers, float **recv_buffers, int nDev,
+               int *device_ids) {
   printf("Starting NCCL-AllReduce communication...\n");
-  printf("GPU_COUNT: %d\n", GPU_COUNT);
-  // Define the communicators for each GPU
-  ncclComm_t comms[GPU_COUNT];
-
-  // manage 2 devices
-  int nDev = GPU_COUNT;
-  int device_ids[GPU_COUNT] = {0, 1};
-  int buffer_size = 32;
-
-  // Define buffer pointer storage
-  float **send_buffers = (float **)malloc(nDev * sizeof(float *));
-  float **recv_buffers = (float **)malloc(nDev * sizeof(float *));
-
-  // Define cuda stream pointer storage
-  cudaStream_t *streams = (cudaStream_t *)malloc(nDev * sizeof(cudaStream_t));
+  printf("GPU_COUNT: %d\n", nDev);
 
   // Malloc host_buffer for initialization
-  float *host_buffer1 = (float *)malloc(buffer_size * sizeof(float));
-  for (int i = 0; i < buffer_size; i++) {
+  float *host_buffer1 = (float *)malloc(BUFFER_SIZE * sizeof(float));
+  for (int i = 0; i < BUFFER_SIZE; i++) {
     host_buffer1[i] = 4.0f;
   }
-  printf("Each device will send a buffer of size %d with value 4.0f\n", buffer_size);
+  printf("Each device will send a buffer of size %d with value 4.0f\n", BUFFER_SIZE);
 
-  // Initialize CUDA devices
+  // Initialize the send and receive buffers
   for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-
-    // Allocate memory for the send and receive buffers
-    CUDACHECK(cudaMalloc(&send_buffers[i], buffer_size * sizeof(float)));
-    CUDACHECK(cudaMalloc(&recv_buffers[i], buffer_size * sizeof(float)));
-
-    // Initialize the send and receive buffers
-    // Send buffer is initialized to 4.0f
-    // Receive buffer is initialized to 0
-    CUDACHECK(cudaMemcpy(send_buffers[i], host_buffer1, buffer_size * sizeof(float), cudaMemcpyHostToDevice));
-    CUDACHECK(cudaMemset(recv_buffers[i], 0, buffer_size * sizeof(float)));
-
-    // Create a cuda stream
-    CUDACHECK(cudaStreamCreate(&streams[i]));
+    CUDACHECK(cudaMemcpy(send_buffers[i], host_buffer1, BUFFER_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+    CUDACHECK(cudaMemset(recv_buffers[i], 0, BUFFER_SIZE * sizeof(float)));
   }
 
-  // Free host_buffer
+  // Free the host buffer
   free(host_buffer1);
-
-  // Initialize NCCL communicators
-  NCCLCHECK(ncclCommInitAll(comms, nDev, device_ids));
-
-  // #### Main Content of the program ####
 
   // Start a NCCL group
   // This is used to group all the NCCL operations that need to be done together
   // Used when multiple devices are involved in a single thread execution
   NCCLCHECK(ncclGroupStart());
+
+  // Insert all reduce operations for each device's cuda stream
   for (int i = 0; i < nDev; i++) {
-    // Insert all reduce operations for each device's cuda stream
-    NCCLCHECK(ncclAllReduce((const void *)send_buffers[i], (void *)recv_buffers[i], buffer_size, ncclFloat, ncclSum,
+    NCCLCHECK(ncclAllReduce((const void *)send_buffers[i], (void *)recv_buffers[i], BUFFER_SIZE, ncclFloat, ncclSum,
                             comms[i], streams[i]));
   }
   NCCLCHECK(ncclGroupEnd());
@@ -69,44 +40,17 @@ void allReduce() {
   }
 
   // print the results
-  float *host_buffer2 = (float *)malloc(buffer_size * sizeof(float));
-  printf("All-reduce results: \n");
+  float *host_buffer2 = (float *)malloc(BUFFER_SIZE * sizeof(float));
   for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-    CUDACHECK(cudaMemcpy(host_buffer2, recv_buffers[i], buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
-    printf("Device %d: ", device_ids[i]);
-    // print the results
-    for (int j = 0; j < buffer_size; j++) {
-      printf("%f ", host_buffer2[j]);
-    }
-
-    printf("\n\n\n");
+    CUDACHECK(cudaMemcpy(host_buffer2, recv_buffers[i], BUFFER_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
   }
-
-  // free the host buffer
-  free(host_buffer2);
-
+  printf("AllReduce results: \n");
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    printf("%f ", host_buffer2[i]);
+  }
   printf("\n");
 
-  // #### End of Main Content of the program ####
-
-  // free device buffers
-  for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-    CUDACHECK(cudaFree(send_buffers[i]));
-    CUDACHECK(cudaFree(recv_buffers[i]));
-  }
-
-  // finalize NCCL communicators
-  for (int i = 0; i < nDev; i++) {
-    NCCLCHECK(ncclCommDestroy(comms[i]));
-  }
-
-  // free the cuda streams
-  for (int i = 0; i < nDev; i++) {
-    CUDACHECK(cudaSetDevice(device_ids[i]));
-    CUDACHECK(cudaStreamDestroy(streams[i]));
-  }
+  free(host_buffer2);
 
   printf("NCCL-AllReduce communication completed successfully\n");
 }

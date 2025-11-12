@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   allReduceMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
 
   // sendRecvMPI
-  // sendRecvMPI(comm, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
+  sendRecvMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
 
   // #### End of Main Content of the program ####
 

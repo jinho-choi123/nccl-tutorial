@@ -8,6 +8,8 @@
 
 #define GPU_COUNT 2
 
+#define BUFFER_SIZE 32
+
 // MACROS FOR CUDA CHECKS
 #define CUDACHECK(cmd)                                                                                                 \
   do {                                                                                                                 \
