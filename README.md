@@ -38,3 +38,15 @@ mpirun -n 2 ./mt_md/mt_md_main
 # For n_gpus GPUs
 mpirun -n <n_gpus> ./mt_md/mt_md_main
 ```
+
+### Profiling with Nsight System
+
+```bash
+sudo nsys profile \
+--trace nvtx \
+--cuda-memory-usage true \
+--env-var NCCL_P2P_DISABLE=1 \
+--force-overwrite true \
+--output profile_nccl_tutorial \
+/root/nccl-tutorial/.venv/bin/mpirun -n 4 --allow-run-as-root ./mt_md/mt_md_main
+```

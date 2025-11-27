@@ -22,12 +22,28 @@ void allReduceMPI(ncclComm_t comm, cudaStream_t &stream, float *send_buffer, flo
 
   // Free host_buffer
   free(host_buffer1);
+  
+  // Make Start and End event to record the elapsed time
+  cudaEvent_t start, end;
+  CUDACHECK(cudaEventCreate(&start));
+  CUDACHECK(cudaEventCreate(&end));
+
+  // Record the start event
+  CUDACHECK(cudaEventRecord(start, stream));
 
   // Call ncclAllReduce
   NCCLCHECK(ncclAllReduce(send_buffer, recv_buffer, buffer_size, ncclFloat, ncclSum, comm, stream));
 
+  // Record the end event
+  CUDACHECK(cudaEventRecord(end, stream));
+
   // Synchronize the stream
   CUDACHECK(cudaStreamSynchronize(stream));
+
+  // Calculate the elapsed time
+  float elapsed_time;
+  CUDACHECK(cudaEventElapsedTime(&elapsed_time, start, end));
+  printf("Elapsed time: %f ms\n", elapsed_time);
 
   // Print the results
   float *host_buffer2 = (float *)malloc(buffer_size * sizeof(float));
@@ -42,5 +58,10 @@ void allReduceMPI(ncclComm_t comm, cudaStream_t &stream, float *send_buffer, flo
 
   // Free host_buffer
   free(host_buffer2);
+
+  // Free the events
+  CUDACHECK(cudaEventDestroy(start));
+  CUDACHECK(cudaEventDestroy(end));
+
   printf("MPI-AllReduce communication completed successfully\n");
 }

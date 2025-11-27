@@ -25,7 +25,7 @@ void sendRecvMPI(ncclComm_t comm, cudaStream_t &stream, float *send_buffer, floa
   // Call ncclSendRecv
   if (world_rank == 0) {
     NCCLCHECK(ncclSend(send_buffer, buffer_size, ncclFloat, 1, comm, stream));
-  } else {
+  } else if(world_rank == 1) {
     NCCLCHECK(ncclRecv(recv_buffer, buffer_size, ncclFloat, 0, comm, stream));
   }
 

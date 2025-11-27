@@ -1,5 +1,7 @@
 #include "allReduceMPI.hpp"
 #include "sendRecvMPI.hpp"
+#include "allGatherMPI.hpp"
+
 int main(int argc, char **argv) {
 
   // Initialize MPI environment
@@ -42,10 +44,13 @@ int main(int argc, char **argv) {
   // #### Main Content of the program ####
 
   // allReduceMPI
-  allReduceMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
+  // allReduceMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
 
   // sendRecvMPI
-  sendRecvMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
+  // sendRecvMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
+
+  // allGatherMPI
+  allGatherMPI(comm, stream, send_buffer, recv_buffer, BUFFER_SIZE, world_size, world_rank);
 
   // #### End of Main Content of the program ####
 

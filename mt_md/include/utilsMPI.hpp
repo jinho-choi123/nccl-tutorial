@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define GPU_COUNT 2
-#define BUFFER_SIZE 32
+#define GPU_COUNT 4
+#define BUFFER_SIZE 1073741824 // 1 * sizeof(float) GB = 4GB
 
 // MACROS FOR CUDA CHECKS
 #define CUDACHECK(cmd)                                                                                                 \
