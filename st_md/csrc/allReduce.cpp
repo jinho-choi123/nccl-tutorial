@@ -1,4 +1,5 @@
 #include "allReduce.hpp"
+#define PRINT_LEN 3
 
 void allReduce(ncclComm_t *comms, cudaStream_t *streams, float **send_buffers, float **recv_buffers, int nDev,
                int *device_ids) {
@@ -8,7 +9,10 @@ void allReduce(ncclComm_t *comms, cudaStream_t *streams, float **send_buffers, f
   // Malloc host_buffer for initialization
   float *host_buffer1 = (float *)malloc(BUFFER_SIZE * sizeof(float));
   for (int i = 0; i < BUFFER_SIZE; i++) {
-    host_buffer1[i] = 4.0f;
+    host_buffer1[i] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    if(i < PRINT_LEN) {
+      printf("send_buffer[%d] = %f\n", i, host_buffer1[i]);
+    }
   }
   printf("Each device will send a buffer of size %d with value 4.0f\n", BUFFER_SIZE);
 
@@ -28,7 +32,7 @@ void allReduce(ncclComm_t *comms, cudaStream_t *streams, float **send_buffers, f
 
   // Insert all reduce operations for each device's cuda stream
   for (int i = 0; i < nDev; i++) {
-    NCCLCHECK(ncclAllReduce((const void *)send_buffers[i], (void *)recv_buffers[i], BUFFER_SIZE, ncclFloat, ncclSum,
+    NCCLCHECK(ncclAllReduce((const void *)send_buffers[i], (void *)recv_buffers[i], BUFFER_SIZE, ncclFloat32, ncclSum,
                             comms[i], streams[i]));
   }
   NCCLCHECK(ncclGroupEnd());
@@ -47,6 +51,9 @@ void allReduce(ncclComm_t *comms, cudaStream_t *streams, float **send_buffers, f
   printf("AllReduce results: \n");
   for (int i = 0; i < BUFFER_SIZE; i++) {
     printf("%f ", host_buffer2[i]);
+    if(i < PRINT_LEN) {
+      printf("recv_buffer[%d] = %f\n", i, host_buffer2[i]);
+    }
   }
   printf("\n");
 

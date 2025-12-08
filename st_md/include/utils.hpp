@@ -5,6 +5,7 @@
 #include <nccl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstdlib>
 
 #define GPU_COUNT 2
 
